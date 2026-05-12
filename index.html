@@ -509,6 +509,20 @@
       font-family: Arial, Helvetica, sans-serif;
     }
 
+    .print-submission {
+      display: none;
+      white-space: pre-wrap;
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 12pt;
+      line-height: 1.45;
+      color: var(--ink);
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 18px;
+      min-height: 390px;
+    }
+
     .button-row {
       display: flex;
       flex-wrap: wrap;
@@ -609,53 +623,71 @@
     }
 
     @media print {
+      @page {
+        margin: 0.65in;
+      }
+
       body {
-        background: white;
-        color: black;
+        background: white !important;
+        color: black !important;
         font-size: 12pt;
+        line-height: 1.45;
       }
 
       header.hero,
       nav.side-nav,
-      section.card:not(#submission),
       footer,
       .button-row,
-      .skip-link {
+      .skip-link,
+      .page-controls,
+      section.card:not(#submission),
+      #submission .section-intro,
+      #submission label,
+      #submission .small-note,
+      textarea.submission {
         display: none !important;
       }
 
       .page-shell,
-      .layout {
-        width: 100%;
-        display: block;
-        padding: 0;
-        margin: 0;
-      }
-
-      main { display: block; }
-
-      .step-page,
-      .step-page.active {
+      .layout,
+      main {
+        width: 100% !important;
         display: block !important;
-      }
-
-      .page-controls {
-        display: none !important;
+        padding: 0 !important;
+        margin: 0 !important;
       }
 
       #submission {
         display: block !important;
-        border: 0;
-        box-shadow: none;
-        padding: 0;
-        background: white;
+        border: 0 !important;
+        box-shadow: none !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        background: white !important;
       }
 
-      textarea.submission {
-        border: 0;
-        min-height: auto;
-        height: auto;
-        white-space: pre-wrap;
+      #submission h2 {
+        display: block !important;
+        font-family: Georgia, 'Times New Roman', serif;
+        font-size: 20pt;
+        line-height: 1.15;
+        margin: 0 0 18pt;
+        color: black !important;
+      }
+
+      .print-submission {
+        display: block !important;
+        white-space: pre-wrap !important;
+        font-family: Arial, Helvetica, sans-serif !important;
+        font-size: 11.5pt !important;
+        line-height: 1.45 !important;
+        color: black !important;
+        background: white !important;
+        border: 0 !important;
+        border-radius: 0 !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        min-height: 0 !important;
       }
     }
   </style>
@@ -855,6 +887,7 @@
         </div>
         <label class="input-label" for="submissionBox">Submission box</label>
         <textarea class="submission" id="submissionBox" readonly placeholder="Your completed work will appear here after you click Build my submission."></textarea>
+        <pre class="print-submission" id="printSubmission" aria-hidden="true"></pre>
         <p class="small-note" id="copyStatus" aria-live="polite"></p>
       </section>
     </main>
@@ -923,8 +956,11 @@
         }
         const key = el.dataset.save || el.id;
         const saved = localStorage.getItem(storageKey(key));
-        if (saved !== null && !el.readOnly) el.value = saved;
+        if (saved !== null) {
+          if (!el.readOnly || el.id === 'submissionBox') el.value = saved;
+        }
       });
+      syncPrintableSubmission();
     }
 
     function renderPractice() {
@@ -1440,6 +1476,22 @@
       document.getElementById('progressFill').style.width = `${Math.round((current / total) * 100)}%`;
     }
 
+    function syncPrintableSubmission() {
+      const box = document.getElementById('submissionBox');
+      const printBox = document.getElementById('printSubmission');
+      if (printBox && box) {
+        printBox.textContent = box.value.trim() ? box.value : 'Click “Build my submission” before printing so your completed work appears here.';
+      }
+    }
+
+    function printSubmissionPdf() {
+      const box = document.getElementById('submissionBox');
+      if (!box.value.trim()) buildSubmission();
+      syncPrintableSubmission();
+      setActiveStep(stepIds.indexOf('submission'), false);
+      window.print();
+    }
+
     function buildSubmission() {
       const lines = [];
       lines.push('Fixing Run-Ons Practice: Narrative Essay Sentence Lab');
@@ -1489,6 +1541,7 @@
       const box = document.getElementById('submissionBox');
       box.value = lines.join('\n');
       localStorage.setItem(storageKey('submissionBox'), box.value);
+      syncPrintableSubmission();
     }
 
     async function copySubmission() {
@@ -1544,8 +1597,13 @@
       document.getElementById('clearScan').addEventListener('click', clearScan);
       document.getElementById('buildSubmission').addEventListener('click', buildSubmission);
       document.getElementById('copySubmission').addEventListener('click', copySubmission);
-      document.getElementById('printTop').addEventListener('click', () => window.print());
-      document.getElementById('printBottom').addEventListener('click', () => window.print());
+      document.getElementById('printTop').addEventListener('click', printSubmissionPdf);
+      document.getElementById('printBottom').addEventListener('click', printSubmissionPdf);
+      window.addEventListener('beforeprint', () => {
+        const box = document.getElementById('submissionBox');
+        if (!box.value.trim()) buildSubmission();
+        syncPrintableSubmission();
+      });
     }
 
     renderPractice();
